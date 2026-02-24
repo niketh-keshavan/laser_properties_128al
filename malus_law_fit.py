@@ -100,15 +100,15 @@ fig.savefig("malus_law_fit.png", dpi=200)
 print("\nSaved  malus_law_fit.png")
 
 # ── Figure 2: Residuals ──────────────────────────────────────────────────
-fig2, ax2 = plt.subplots(figsize=(8, 3.5))
+fig2, ax2 = plt.subplots(figsize=(8, 2.5))
 ax2.errorbar(
     angle_deg, residuals, yerr=power_uncertainty,
     fmt="o", capsize=3, color="royalblue"
 )
 ax2.axhline(0, color="crimson", linewidth=1.5)
-ax2.set_xlabel("Polarizer Angle (°)", fontsize=13)
+ax2.set_xlabel("Polarizer Angle", fontsize=13)
 ax2.set_ylabel("Residual (µW)", fontsize=13)
-ax2.set_title("Residuals (Data − Fit)", fontsize=14)
+ax2.set_title("Residuals", fontsize=14)
 ax2.grid(True, alpha=0.3)
 fig2.tight_layout()
 fig2.savefig("malus_law_residuals.png", dpi=200)

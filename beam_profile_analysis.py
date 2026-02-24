@@ -155,13 +155,33 @@ x_smooth = np.linspace(x_pos[0] - 200, x_pos[-1] + 200, 500)
 x_smooth_mm = x_smooth / 1000.0
 P_smooth = knife_edge_model(x_smooth, *popt)
 
+# ── Propagate fit-parameter uncertainty → confidence band ─────────────────
+# Compute Jacobian of the model w.r.t. (A, x0, w) at each smooth point
+def _model_jacobian(x, A, x0, w):
+    """Partial derivatives of knife_edge_model w.r.t. A, x0, w."""
+    arg = np.sqrt(2) * (x - x0) / w
+    erf_val = erf(arg)
+    gauss = np.exp(-arg**2)           # = exp(-2(x-x0)^2/w^2)
+    dP_dA  = 0.5 * (1.0 + erf_val)
+    dP_dx0 = -A / (np.sqrt(np.pi) * w) * gauss * np.sqrt(2)
+    dP_dw  = -A * np.sqrt(2) * (x - x0) / (np.sqrt(np.pi) * w**2) * gauss
+    return np.column_stack([dP_dA, dP_dx0, dP_dw])
+
+J = _model_jacobian(x_smooth, *popt)               # (N, 3)
+P_var = np.einsum("ij,jk,ik->i", J, pcov, J)       # σ² at each point
+P_sigma = np.sqrt(np.maximum(P_var, 0.0))           # 1-σ band
+
 fig2, ax2 = plt.subplots(figsize=(8, 5))
+ax2.fill_between(x_smooth_mm, P_smooth - P_sigma, P_smooth + P_sigma,
+                 color="crimson", alpha=0.18, label="1σ confidence band")
 ax2.errorbar(x_pos_mm, power_adj, yerr=power_unc,
-             fmt="o", capsize=3, color="royalblue", label="Data")
+             fmt="o", capsize=4, markersize=6, color="royalblue",
+             elinewidth=1.2, label="Data")
 ax2.plot(x_smooth_mm, P_smooth, "-", color="crimson", linewidth=2,
-         label=f"Fit: $x_0$={x0_mm:.3f} mm, $w$={w_mm:.3f} mm")
+         label=(f"Fit: $x_0$={x0_mm:.3f}±{x0_mm_err:.3f} mm, "
+                f"$w$={w_mm:.3f}±{w_mm_err:.3f} mm"))
 ax2.axvline(x0_mm, ls="--", color="gray", alpha=0.6,
-            label=f"Beam centre $x_0$={x0_mm:.3f} mm")
+            label=f"Beam centre $x_0$={x0_mm:.3f}±{x0_mm_err:.3f} mm")
 ax2.set_xlabel("Knife-Edge Position (mm)", fontsize=13)
 ax2.set_ylabel("Power (µW)", fontsize=13)
 ax2.set_title("Exercise IV.10 — Error-Function Fit to Knife-Edge Data", fontsize=14)
@@ -172,7 +192,7 @@ fig2.savefig("ex_IV10_erf_fit.png", dpi=200)
 print("\n  Saved  ex_IV10_erf_fit.png")
 
 # ── Residuals plot ─────────────────────────────────────────────────────────
-fig3, ax3 = plt.subplots(figsize=(8, 3.5))
+fig3, ax3 = plt.subplots(figsize=(8, 2.5))
 ax3.errorbar(x_pos_mm, residuals, yerr=power_unc,
              fmt="o", capsize=3, color="royalblue")
 ax3.axhline(0, color="crimson", linewidth=1.5)
